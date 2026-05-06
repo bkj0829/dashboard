@@ -1,43 +1,43 @@
 {
-  "date": "2026-05-06",
-  "updatedAt": "2026-05-06T04:35:12",
-  "dailyGoal": 17400000,
-  "yesterdayTotal": 17400000,
+  "date": "",
+  "updatedAt": "",
+  "dailyGoal": 0,
+  "yesterdayTotal": 0,
   "channels": {
     "cafe24": {
-      "amount": 1352527,
-      "orders": 36,
+      "amount": 0,
+      "orders": 0,
       "status": "ok"
     },
     "shopby": {
-      "amount": 689653,
-      "orders": 13,
+      "amount": 0,
+      "orders": 0,
       "status": "ok"
     },
     "musinsa": {
-      "amount": 1251344,
-      "orders": 15,
+      "amount": 0,
+      "orders": 0,
       "status": "ok"
     },
     "ably": {
-      "amount": 654882,
-      "orders": 7,
+      "amount": 0,
+      "orders": 0,
       "status": "ok"
     },
     "smartstore": {
-      "amount": 2622560,
-      "orders": 64,
+      "amount": 0,
+      "orders": 0,
       "status": "ok"
     },
     "coupang": {
-      "amount": 1941991,
-      "orders": 52,
+      "amount": 0,
+      "orders": 0,
       "status": "ok"
     },
     "kakaostyle": {
-      "amount": 305849,
-      "orders": 6,
-      "status": "warn"
+      "amount": 0,
+      "orders": 0,
+      "status": "ok"
     }
   }
 }
