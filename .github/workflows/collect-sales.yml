@@ -1,9 +1,9 @@
 name: Collect Sales
 
-# 1) 매 15분 마다 실시간 수집  2) 매일 23:55 KST 일/월/연 집계  3) 수동 실행 가능
+# 1) 매 15분마다 실시간 수집  2) 매일 23:55 KST 일/월/연 집계  3) 수동 실행 가능
 on:
   schedule:
-    - cron: "*/15 * * * *"      # 15분마다 (UTC). 비용 절약을 원하면 늘려도 됩니다.
+    - cron: "*/15 * * * *"      # 15분마다 (UTC 기준)
     - cron: "55 14 * * *"       # 23:55 KST = 14:55 UTC — 일별 마감 집계
   workflow_dispatch:
     inputs:
@@ -54,12 +54,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: "22"
+          # cache 옵션은 락파일이 있을 때만 동작하도록 분기
+          cache: ${{ hashFiles('**/package-lock.json') != '' && 'npm' || '' }}
 
-      - run: npm ci || npm install
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Collect (실시간)
         if: ${{ github.event.schedule == '*/15 * * * *' || github.event.inputs.mode == 'collect' || github.event.inputs.mode == 'all' || github.event.inputs.mode == '' }}
