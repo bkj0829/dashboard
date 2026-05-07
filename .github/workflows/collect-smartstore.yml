@@ -47,30 +47,25 @@ jobs:
         run: node scripts/collect-smartstore.js
 
       - name: Commit & push
-        shell: powershell
+        shell: cmd
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name  "sales-bot"
-          git config user.email "sales-bot@users.noreply.github.com"
+          git config user.name sales-bot
+          git config user.email sales-bot@users.noreply.github.com
+          git remote set-url origin https://x-access-token:%GH_TOKEN%@github.com/%GITHUB_REPOSITORY%.git
           git pull --rebase
-          if ($LASTEXITCODE -ne 0) { git rebase --abort 2>$null; Write-Host "rebase 스킵" }
+          if errorlevel 1 git rebase --abort
           git add data/today.json
           git diff --cached --quiet
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "변경사항 없음"
-          } else {
-            $stamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-            git commit -m "chore(data): smartstore snapshot $stamp"
-            git push
-          }
+          if errorlevel 1 (
+            git commit -m "chore(data): smartstore snapshot"
+            git push origin HEAD:main
+            if errorlevel 1 echo ::warning::push failed
+          ) else (
+            echo no changes
+          )
+          exit /b 0
 
-      # 데이터 갱신했으면 Pages 도 즉시 재배포
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - name: Deploy to Pages
-        uses: actions/deploy-pages@v4
+      # Pages 재배포는 별도 워크플로우(collect-sales.yml)가 15분마다 자동 처리
+      # → 여기선 데이터 push 만 책임지고 종료
