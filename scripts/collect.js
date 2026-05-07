@@ -21,7 +21,6 @@ import { collectCafe24 }     from './collectors/cafe24.js';
 import { collectShopby }     from './collectors/shopby.js';
 import { collectMusinsa }    from './collectors/musinsa.js';
 import { collectAbly }       from './collectors/ably.js';
-import { collectSmartstore } from './collectors/smartstore.js';
 import { collectCoupang }    from './collectors/coupang.js';
 import { collectKakaostyle } from './collectors/kakaostyle.js';
 
@@ -29,12 +28,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
 
+// 스마트스토어는 self-hosted runner 에서 별도 워크플로우(collect-smartstore.yml)로 처리.
+// 이 메인 스크립트는 GitHub-hosted 러너에서 6개 채널만 수집.
 const CHANNELS = [
   ['cafe24',     collectCafe24],
   ['shopby',     collectShopby],
   ['musinsa',    collectMusinsa],
   ['ably',       collectAbly],
-  ['smartstore', collectSmartstore],
   ['coupang',    collectCoupang],
   ['kakaostyle', collectKakaostyle],
 ];
@@ -64,7 +64,6 @@ async function main() {
   console.log('Collecting for', range);
 
   const results = await Promise.all(CHANNELS.map(([name, fn]) => safeRun(name, fn, range)));
-  const channels = Object.fromEntries(results);
 
   // 어제 합계는 daily.json 마지막 항목에서
   let yesterdayTotal = 0;
@@ -72,6 +71,14 @@ async function main() {
     const daily = JSON.parse(await fs.readFile(path.join(DATA_DIR, 'daily.json'), 'utf8'));
     yesterdayTotal = daily.series.at(-1)?.total ?? 0;
   } catch {}
+
+  // 기존 today.json 을 읽어 smartstore 등 self-hosted 가 채운 채널은 보존
+  let prev = {};
+  try {
+    prev = JSON.parse(await fs.readFile(path.join(DATA_DIR, 'today.json'), 'utf8'));
+  } catch {}
+  const channels = { ...(prev.channels || {}) };
+  results.forEach(([name, entry]) => { channels[name] = entry; });
 
   const doc = {
     date: range.dateKST,
