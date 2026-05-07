@@ -1,6 +1,6 @@
 {
   "date": "2026-05-07",
-  "updatedAt": "2026-05-07T06:05:20.251Z",
+  "updatedAt": "2026-05-07T06:15:23.996Z",
   "dailyGoal": 0,
   "yesterdayTotal": 0,
   "channels": {
@@ -32,7 +32,7 @@
       "amount": 0,
       "orders": 0,
       "status": "error",
-      "error": "smartstore orders: 400 {\n  \"code\" : \"4000\",\n  \"message\" : \"NotNull.commonProductOrdersRequest.productOrderNos\",\n  \"traceId\" : \"UPKNvM9SSSq55MMhbvxN7Q^1777916741839^23460199\",\n  \"timestamp\" : \"2026-05-07T15:05:20.022+09:00\"\n}"
+      "error": "smartstore orders: 400 {\n  \"code\" : \"4000\",\n  \"message\" : \"NotNull.commonProductOrdersRequest.productOrderNos\",\n  \"traceId\" : \"sZ4j_M-ITj6bJtIzWsxv_g^1777916742591^23295392\",\n  \"timestamp\" : \"2026-05-07T15:15:23.772+09:00\"\n}"
     },
     "coupang": {
       "amount": 0,
