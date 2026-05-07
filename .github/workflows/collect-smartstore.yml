@@ -1,0 +1,68 @@
+name: Collect Smartstore (self-hosted)
+
+# 본인 PC(self-hosted runner)에서 스마트스토어 매출만 수집
+# - 네이버 커머스 API 가 한국 IP + 화이트리스트만 허용해서 GitHub 무료 러너로는 호출 불가
+# - PC 가 켜져 있을 때만 동작합니다 (꺼져 있으면 큐에 쌓이지 않고 그냥 스킵됨)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # 30분마다 (필요시 */15 등으로 변경)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: collect-smartstore
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: self-hosted   # ← 본인 PC 에서 실행
+    timeout-minutes: 5
+    env:
+      SMARTSTORE_CLIENT_ID:     ${{ secrets.SMARTSTORE_CLIENT_ID }}
+      SMARTSTORE_CLIENT_SECRET: ${{ secrets.SMARTSTORE_CLIENT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          if exist package-lock.json (npm ci) else (npm install --no-audit --no-fund)
+        shell: cmd
+
+      - name: Collect Smartstore
+        run: node scripts/collect-smartstore.js
+
+      - name: Commit & push
+        shell: bash
+        run: |
+          git config user.name  "sales-bot"
+          git config user.email "sales-bot@users.noreply.github.com"
+          git pull --rebase || true
+          git add data/today.json
+          if git diff --cached --quiet; then
+            echo "변경사항 없음"
+          else
+            git commit -m "chore(data): smartstore snapshot $(date -u +%FT%TZ)"
+            git push
+          fi
+
+      # 데이터 갱신했으면 Pages 도 즉시 재배포
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4
