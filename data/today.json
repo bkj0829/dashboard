@@ -1,6 +1,6 @@
 {
   "date": "2026-05-07",
-  "updatedAt": "2026-05-07T05:25:47.155Z",
+  "updatedAt": "2026-05-07T06:05:20.251Z",
   "dailyGoal": 0,
   "yesterdayTotal": 0,
   "channels": {
@@ -32,7 +32,7 @@
       "amount": 0,
       "orders": 0,
       "status": "error",
-      "error": "smartstore token: 403 {\"code\":\"GW.IP_NOT_ALLOWED\",\"message\":\"호출이 허용되지 않은 IP입니다.\",\"timestamp\":\"2026-05-07T13:48:16.436+09:00\",\"traceId\":\"UPKNvM9SSSq55MMhbvxN7Q^1777916741839^22908841\"}"
+      "error": "smartstore orders: 400 {\n  \"code\" : \"4000\",\n  \"message\" : \"NotNull.commonProductOrdersRequest.productOrderNos\",\n  \"traceId\" : \"UPKNvM9SSSq55MMhbvxN7Q^1777916741839^23460199\",\n  \"timestamp\" : \"2026-05-07T15:05:20.022+09:00\"\n}"
     },
     "coupang": {
       "amount": 0,
