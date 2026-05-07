@@ -14,6 +14,8 @@ on:
 
 permissions:
   contents: write   # data/*.json 커밋용
+  pages: write      # Pages 배포용
+  id-token: write   # Pages 인증용
 
 concurrency:
   group: collect-sales
@@ -88,3 +90,18 @@ jobs:
             git commit -m "chore(data): update sales snapshot $(date -u +%FT%TZ)"
             git push
           fi
+
+      # ── 데이터 갱신 후 Pages 도 즉시 재배포 ──
+      - name: Pull latest (커밋 후 최신 상태 가져오기)
+        run: git pull --rebase || true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4
