@@ -29,16 +29,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+      # setup-node 는 system32 내부 압축 해제 권한 문제로 실패하는 경우가 있어
+      # 본인 PC 에 이미 설치된 Node.js 를 그대로 사용. 버전만 확인.
+      - name: Verify Node.js
+        shell: cmd
+        run: |
+          node --version
+          npm --version
 
       - name: Install dependencies
+        shell: cmd
         run: |
           if exist package-lock.json (npm ci) else (npm install --no-audit --no-fund)
-        shell: cmd
 
       - name: Collect Smartstore
+        shell: cmd
         run: node scripts/collect-smartstore.js
 
       - name: Commit & push
