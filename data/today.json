@@ -1,6 +1,6 @@
 {
   "date": "2026-05-08",
-  "updatedAt": "2026-05-08T06:22:07.127Z",
+  "updatedAt": "2026-05-08T07:59:35.454Z",
   "dailyGoal": 0,
   "yesterdayTotal": 0,
   "channels": {
@@ -38,7 +38,7 @@
       "amount": 0,
       "orders": 0,
       "status": "error",
-      "error": "쿠팡 환경변수 누락"
+      "error": "coupang: 401 {\n  \"code\" : \"ERROR\",\n  \"message\" : \"HMAC format is invalid.\",\n  \"transactionId\" : \"8859374b-30ec-4824-9796-91e4bc88aab6\"\n}"
     },
     "kakaostyle": {
       "amount": 0,
