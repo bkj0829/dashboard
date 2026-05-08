@@ -104,16 +104,21 @@ function renderToday(today) {
   document.getElementById('kpi-goal').textContent = goal ? `${pct.toFixed(0)}%` : '—';
   document.getElementById('kpi-goal-sub').textContent = goal ? `목표 ${fmtKRW(goal)}` : '목표 미설정';
 
-  // 채널 카드
+  // 채널 카드 — 에러 메시지를 카드 안에 직접 표시 (자가 진단)
   const wrap = document.getElementById('channel-cards');
   wrap.innerHTML = '';
+  const diagnosticsList = [];
   CHANNELS.forEach(c => {
     const d = channels[c.key] || { amount: 0, orders: 0, status: 'ok' };
     const card = document.createElement('article');
-    card.className = 'ch-card';
+    card.className = 'ch-card' + (d.status === 'error' ? ' has-error' : '');
     card.style.setProperty('--c', c.color);
     const statusLabel = d.status === 'error' ? '연동오류'
       : d.status === 'warn' ? '지연' : '정상';
+
+    // 에러 메시지 분류 (사람 친화적 한국어 안내로 변환)
+    const hint = humanizeError(c.key, d.error);
+
     card.innerHTML = `
       <div class="ch-name"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>
       <div class="ch-amount">${fmtKRW(d.amount || 0)}</div>
@@ -121,9 +126,115 @@ function renderToday(today) {
         <span>주문 ${fmtNum(d.orders || 0)}</span>
         <span class="ch-status ${d.status || 'ok'}">${statusLabel}</span>
       </div>
+      ${d.error ? `<details class="ch-error"><summary>${hint.title}</summary><div class="ch-error-body"><b>해결:</b> ${hint.fix}<pre>${escapeHtml(d.error)}</pre></div></details>` : ''}
     `;
     wrap.appendChild(card);
+    if (d.error) diagnosticsList.push({ channel: c.name, hint, raw: d.error });
   });
+
+  // 페이지 하단 *진단 패널* 갱신
+  renderDiagnostics(diagnosticsList, today);
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// API 에러를 *어떻게 고쳐야 하는지* 한국어 안내로 매핑
+function humanizeError(channelKey, errMsg) {
+  if (!errMsg) return { title: '정상', fix: '' };
+  const e = String(errMsg);
+
+  // 공통 패턴
+  if (/환경변수 누락|API_KEY 누락/.test(e)) {
+    return {
+      title: 'GitHub Secrets에 키가 등록되지 않았어요',
+      fix: 'Settings → Secrets and variables → Actions 에서 해당 채널의 시크릿을 등록하세요.',
+    };
+  }
+  if (/IP_NOT_ALLOWED|호출이 허용되지 않은 IP/.test(e)) {
+    return {
+      title: '본인 PC IP가 네이버에 등록되지 않았어요',
+      fix: 'whatismyip.com 에서 IP 확인 → apicenter.commerce.naver.com → 내 스토어 앱 → 수정 → API 호출 IP 추가 → 저장. 5분 대기 후 재시도.',
+    };
+  }
+  if (/GW\.AUTHN|요청을 보낼 권한/.test(e)) {
+    return {
+      title: '네이버 API 그룹 권한이 부족해요',
+      fix: 'apicenter.commerce.naver.com → 본인 앱 → 수정 → API 그룹의 *주문(조회 + 발주/발송 처리)* 체크 → 저장. 5분 대기.',
+    };
+  }
+  if (/NotNull|missing|required.*field/i.test(e)) {
+    return {
+      title: 'API 호출 형식이 안 맞아요 (개발자 수정 필요)',
+      fix: '클로드에게 정확한 에러 메시지 공유. 보통 1줄 수정으로 해결.',
+    };
+  }
+  if (/401|Unauthorized/.test(e)) {
+    return {
+      title: '시크릿 키 값이 틀렸거나 만료됐어요',
+      fix: 'GitHub Secrets에 등록한 키를 다시 발급받아 재등록. 값 앞뒤 공백/줄바꿈 주의.',
+    };
+  }
+  if (/403/.test(e)) {
+    return {
+      title: '접근 권한 부족 (403)',
+      fix: '플랫폼 측에서 API 권한이 막혀있는 상태. 발급 화면에서 권한 항목 모두 체크되어 있는지 확인.',
+    };
+  }
+  if (/404|Not Found/.test(e)) {
+    return {
+      title: '엔드포인트 URL이 틀린 것 같아요 (404)',
+      fix: '플랫폼 공식 매뉴얼에서 정확한 API 경로를 받아 클로드에게 알려주세요.',
+    };
+  }
+  if (/timeout|ECONNREFUSED|ETIMEDOUT/i.test(e)) {
+    return {
+      title: '네트워크 연결 문제',
+      fix: '본인 PC 인터넷 연결 확인. self-hosted runner의 PowerShell이 살아있는지 확인.',
+    };
+  }
+  return {
+    title: '알 수 없는 에러 — 클릭해 펼쳐서 원문 확인',
+    fix: '아래 원문을 그대로 복사해서 클로드에게 보내주세요.',
+  };
+}
+
+function renderDiagnostics(list, today) {
+  let panel = document.getElementById('diag-panel');
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'diag-panel';
+    panel.className = 'panel';
+    document.querySelector('.container').appendChild(panel);
+  }
+  const updated = today.updatedAt
+    ? new Date(today.updatedAt).toLocaleString('ko-KR')
+    : '알 수 없음';
+  if (list.length === 0) {
+    panel.innerHTML = `
+      <div class="panel-head"><h2>🟢 진단</h2><span class="muted">${updated}</span></div>
+      <p class="muted">모든 채널 정상. 데이터가 ₩0 인 채널은 *오늘 매출이 없거나* *키 미등록* 상태입니다.</p>
+    `;
+    return;
+  }
+  panel.innerHTML = `
+    <div class="panel-head">
+      <h2>🟡 진단 — 처리할 항목 ${list.length}개</h2>
+      <span class="muted">최종 ${updated}</span>
+    </div>
+    <ol class="diag-list">
+      ${list.map(d => `
+        <li>
+          <div class="diag-channel">${d.channel}</div>
+          <div class="diag-title"><b>${d.hint.title}</b></div>
+          <div class="diag-fix">${d.hint.fix}</div>
+          <details class="diag-raw"><summary>API 응답 원문 보기</summary><pre>${escapeHtml(d.raw)}</pre></details>
+        </li>
+      `).join('')}
+    </ol>
+    <p class="muted small">⓵ 위 안내대로 처리 → ⓶ 5~10분 대기 → ⓷ 새로고침 버튼. 같은 메시지 반복되면 그 항목의 *원문 보기* 펼쳐서 클로드에게 공유.</p>
+  `;
 }
 
 /* ───────────── 누적 추이 ───────────── */
