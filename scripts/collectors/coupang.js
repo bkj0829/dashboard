@@ -51,7 +51,7 @@ export async function collectCoupang() {
 
   const { from, to } = kstNowMinusToday();
   const path = `/v2/providers/openapi/apis/api/v4/vendors/${vendorId}/ordersheets`;
-  const query = `createdAtFrom=${from}&createdAtTo=${to}&status=ACCEPT&maxPerPage=50`;
+  const query = `searchType=timeFrame&createdAtFrom=${from}&createdAtTo=${to}&maxPerPage=50`;
 
   let amount = 0, orders = 0, nextToken = '';
   do {
