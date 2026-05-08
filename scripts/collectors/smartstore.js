@@ -2,17 +2,13 @@
  * 네이버 스마트스토어 (커머스 API) 매출 수집기
  *
  * 인증: OAuth2 client_credentials (전자서명 방식)
- *  - POST https://api.commerce.naver.com/external/v1/oauth2/token
- *  - body: client_id, timestamp, client_secret_sign, grant_type=client_credentials, type=SELF
- *  - client_secret_sign = bcrypt(client_id + "_" + timestamp, client_secret) 후 base64
- *
- * 결제완료 주문 목록: POST /external/v1/pay-order/seller/product-orders/query
- *  - lastChangedFrom/To (ISO8601, KST 권장)
- *  - 응답의 productOrders[].totalPaymentAmount 합계
+ * 조회 흐름 (2단계):
+ *  1) GET  /v1/pay-order/seller/product-orders/last-changed-statuses
+ *     ?lastChangedFrom=...&lastChangedTo=...&lastChangedType=PAYED
+ *  2) POST /v1/pay-order/seller/product-orders/query
+ *     { productOrderNos: [...] }   ← 네이버는 IDs 가 아니라 Nos 필드명 사용
  *
  * 환경변수: SMARTSTORE_CLIENT_ID, SMARTSTORE_CLIENT_SECRET
- *
- * 주의: bcrypt는 외부 의존성이 필요합니다 — package.json 에 "bcryptjs"를 추가하세요.
  */
 import bcrypt from 'bcryptjs';
 
@@ -38,7 +34,57 @@ async function getAccessToken({ clientId, clientSecret }) {
     body,
   });
   if (!res.ok) throw new Error(`smartstore token: ${res.status} ${await res.text()}`);
-  return res.json(); // { access_token, expires_in, ... }
+  return res.json();
+}
+
+async function listChangedProductOrderIds({ accessToken, startISO, endISO }) {
+  const params = new URLSearchParams({
+    lastChangedFrom: startISO,
+    lastChangedTo: endISO,
+    lastChangedType: 'PAYED',
+  });
+
+  const ids = new Set();
+  let more = true;
+  let cursor = null;
+
+  while (more) {
+    if (cursor) params.set('moreSequence', cursor);
+    const res = await fetch(`${BASE}/v1/pay-order/seller/product-orders/last-changed-statuses?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new Error(`smartstore last-changed: ${res.status} ${await res.text()}`);
+    const json = await res.json();
+    const data = json.data || {};
+    const list = data.lastChangeStatuses || data.lastChangedStatuses || [];
+    list.forEach(x => { if (x.productOrderId) ids.add(x.productOrderId); });
+    more = !!data.more;
+    cursor = data.moreSequence || null;
+    if (list.length === 0) break;
+    if (ids.size > 5000) break;
+  }
+  return [...ids];
+}
+
+async function queryProductOrderDetails({ accessToken, productOrderIds }) {
+  const items = [];
+  for (let i = 0; i < productOrderIds.length; i += 300) {
+    const batch = productOrderIds.slice(i, i + 300);
+    const res = await fetch(`${BASE}/v1/pay-order/seller/product-orders/query`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      // 네이버 커머스 API 는 productOrderIds 가 아니라 productOrderNos 필드명을 사용
+      body: JSON.stringify({ productOrderNos: batch }),
+    });
+    if (!res.ok) throw new Error(`smartstore query: ${res.status} ${await res.text()}`);
+    const json = await res.json();
+    const data = json.data || [];
+    data.forEach(x => items.push(x));
+  }
+  return items;
 }
 
 export async function collectSmartstore({ startISO, endISO }) {
@@ -50,29 +96,30 @@ export async function collectSmartstore({ startISO, endISO }) {
     clientId: env.SMARTSTORE_CLIENT_ID,
     clientSecret: env.SMARTSTORE_CLIENT_SECRET,
   });
+  const accessToken = tok.access_token;
 
-  // 결제완료 상태(PAYED)만 합산
-  const res = await fetch(`${BASE}/v1/pay-order/seller/product-orders/query`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${tok.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      lastChangedFrom: startISO,
-      lastChangedTo: endISO,
-      lastChangedType: 'PAYED',
-    }),
-  });
-  if (!res.ok) throw new Error(`smartstore orders: ${res.status} ${await res.text()}`);
-  const json = await res.json();
-  const list = json.data?.contents || json.contents || [];
+  const ids = await listChangedProductOrderIds({ accessToken, startISO, endISO });
+  if (ids.length === 0) {
+    return { amount: 0, orders: 0 };
+  }
 
-  let amount = 0, orders = 0;
-  list.forEach(item => {
-    const po = item.productOrder || item;
-    amount += Number(po.totalPaymentAmount || po.totalProductAmount || 0);
-    orders += 1;
+  const items = await queryProductOrderDetails({ accessToken, productOrderIds: ids });
+
+  let amount = 0;
+  const orderSet = new Set();
+  items.forEach(it => {
+    const po = it.productOrder || it;
+    const order = it.order || {};
+    const amt = Number(
+      po.totalPaymentAmount ??
+      po.totalProductAmount ??
+      order.paymentAmount ??
+      0
+    );
+    amount += amt;
+    const oid = order.orderId || po.orderId || po.productOrderId;
+    if (oid) orderSet.add(oid);
   });
-  return { amount, orders };
+
+  return { amount, orders: orderSet.size };
 }
