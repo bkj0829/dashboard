@@ -17,10 +17,12 @@ import crypto from 'node:crypto';
 const HOST = 'https://api-gateway.coupang.com';
 
 function signedDateNow() {
-  // YYYYMMDDTHHMMSSZ (UTC)
+  // 쿠팡 OpenAPI 는 *2자리 연도* 형식(yyMMddTHHmmssZ)을 요구합니다 (UTC).
+  // 4자리(YYYYMMDD)로 보내면 서명 불일치 401/403 에러 발생.
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T` +
+  const yy = String(d.getUTCFullYear()).slice(-2);
+  return `${yy}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T` +
          `${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
 }
 
