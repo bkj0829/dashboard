@@ -1,6 +1,6 @@
 {
   "date": "2026-05-10",
-  "updatedAt": "2026-05-10T07:35:06.371Z",
+  "updatedAt": "2026-05-10T11:15:35.134Z",
   "dailyGoal": 0,
   "yesterdayTotal": 0,
   "channels": {
@@ -38,7 +38,7 @@
       "amount": 0,
       "orders": 0,
       "status": "error",
-      "error": "coupang: 403 {\"path\":\"/api/v4/vendors/A00067146/ordersheets\",\"error\":\"FORBIDDEN\",\"message\":\"Your ip address 20.94.54.80 is not allowed for this request. If you need service access, please contact the Coupang seller call center. (Tel: +82-1600-9879, Email: openapisupport@coupang.com)\",\"timestamp\":1778398506268,\"status\":403}"
+      "error": "coupang: 403 {\"path\":\"/api/v4/vendors/A00067146/ordersheets\",\"error\":\"FORBIDDEN\",\"message\":\"Your ip address 68.220.58.145 is not allowed for this request. If you need service access, please contact the Coupang seller call center. (Tel: +82-1600-9879, Email: openapisupport@coupang.com)\",\"timestamp\":1778411735019,\"status\":403}"
     },
     "kakaostyle": {
       "amount": 0,
